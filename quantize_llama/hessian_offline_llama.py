@@ -156,6 +156,7 @@ def main(args):
 
     print(f"dev_emb dtype: {dev_emb.dtype}")
     dev_emb.share_memory_()
+    print(f"DEBUG 1")
 
     position_ids = torch.arange(args.ctx_size, dtype=torch.int64)[None, :] + \
         torch.zeros(args.batch_size, args.ctx_size, dtype=torch.int64)
@@ -178,6 +179,7 @@ def main(args):
     else:
         move_q = None
 
+    print(f"DEBUG 2")
     for transformer_layer_index in range(len(model.model.layers)):
         if (transformer_layer_index <= after_layer):
             print(

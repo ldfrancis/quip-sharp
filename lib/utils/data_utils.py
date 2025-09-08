@@ -61,21 +61,21 @@ def sample_rp1t(tokenizer, size=128, ctx_size=2048, nproc=1):
     devset = torch.zeros((size, ctx_size), dtype=torch.int64)
     saved = 0
     if nproc > 1:
-        p = mp.Pool(nproc)
-        while saved < size:
-            seqs = [(tokenizer, dataset[torch.randint(len(dataset),
-                                                      (size, ))]['text'],
-                     ctx_size) for _ in range(nproc)]
-            tokens = p.starmap(wrap_tokenizer, seqs)
-            for i in range(len(tokens)):
-                lens = tokens[i].attention_mask.sum(dim=-1)
-                good = torch.where(lens == ctx_size)[0]
-                if len(good) > 0:
-                    if saved + len(good) > size:
-                        good = good[:size - saved]
-                    devset[saved:saved + len(good)] = tokens[i].input_ids[good]
-                    saved += len(good)
-                    print(saved)
+        with mp.Pool(nproc) as p:
+            while saved < size:
+                seqs = [(tokenizer, dataset[torch.randint(len(dataset),
+                                                        (size, ))]['text'],
+                        ctx_size) for _ in range(nproc)]
+                tokens = p.starmap(wrap_tokenizer, seqs)
+                for i in range(len(tokens)):
+                    lens = tokens[i].attention_mask.sum(dim=-1)
+                    good = torch.where(lens == ctx_size)[0]
+                    if len(good) > 0:
+                        if saved + len(good) > size:
+                            good = good[:size - saved]
+                        devset[saved:saved + len(good)] = tokens[i].input_ids[good]
+                        saved += len(good)
+                        print(saved)
     else:
         while saved < size:
             tokens = tokenizer(dataset[torch.randint(len(dataset),
@@ -217,10 +217,13 @@ def split_data(X, Y, args):
 
 
 def calculate_logits(model, devset, batch_size):
+    print("Batch size:", batch_size)
+    breakpoint()
     logits = []
     for i in range(len(devset) // batch_size):
         logits.append(
             model(devset[i * batch_size:(i + 1) *
                          batch_size].cuda())['logits'].cpu())
+        breakpoint()
     logits = torch.concat(logits, dim=0)
     return logits
